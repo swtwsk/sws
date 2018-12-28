@@ -36,9 +36,9 @@ object Request {
 
     val parsedRequestLine = parseRequestLine(in.readLine())
     parsedRequestLine match {
-      case Some((method, path)) => {
-        val headerEnviron = parseHeaders(in, Map())
-        val (environ, query) = extractQuery(headerEnviron)
+      case Some((method, pathInfo)) => {
+        val environ = parseHeaders(in, Map())
+        val (path, query) = extractQuery(pathInfo)
 
         new Request(method, path, environ, query).some
       }
@@ -71,10 +71,8 @@ object Request {
     }
   }
 
-  private def extractQuery(environ: Map[String, String]): (Map[String, String], Map[String, String]) = {
+  private def extractQuery(pathInfo: String): (String, Map[String, String]) = {
     import java.net.URLDecoder
-
-    val pathInfo = environ.getOrElse("PATH_INFO", "/")
 
     val (path, queryString) = pathInfo.split("\\?") match {
       case Array(p, qs, _*) => (p, qs)
@@ -90,6 +88,6 @@ object Request {
       }
     }).toMap
 
-    (environ + ("PATH_INFO" -> path, "QUERY_STRING" -> queryString), queryMap)
+    (path, queryMap)
   }
 }
