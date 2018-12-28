@@ -8,9 +8,19 @@ import scalaz._
 import Scalaz._
 
 // TODO: Hide this somehow (private class shows warnings)
-class Request private(environ: Map[String, String]) {
+// TODO: Maybe we should pack query into special Query class?
+case class Request private(method: String,
+                           path: String,
+                           environ: Map[String, String],
+                           query: Map[String, String]) {
   def response: String = {
-    val body = "<html><head><title>Test Page</title></head><body>" + environ.show + "</body></html>"
+    val body = "<html><head><title>Test Page</title></head><body>" +
+      "<div><b>Method: </b>" + method + "</div>" +
+      "<div><b>Path: </b>" + path + "</div>" +
+      "<div><b>Environ: </b>" + environ.show + "</div>" +
+      "<div><b>Query: </b>" + query.show + "</div>" +
+      "</body></html>"
+
     "HTTP/1.1 200 OK\r\n" + "Content-Type: text/html; charset=UTF-8\r\n" +
     "Content-Length: " + body.length + "\r\n" +
     "Connection: close\r\n" + "\r\n" + body
@@ -20,20 +30,27 @@ class Request private(environ: Map[String, String]) {
 object Request {
   // At first it was called parseRequest, but `apply` seems to be
   // a syntactic sugar we could use
-  def apply(socket: java.net.Socket): Request = {
+  def apply(socket: java.net.Socket): Option[Request] = {
     // TODO: Probably we should wrap it into some intelligent side-effect handler
     val in = new BufferedReader(new InputStreamReader(socket.getInputStream))
 
     val parsedRequestLine = parseRequestLine(in.readLine())
+    parsedRequestLine match {
+      case Some((method, path)) => {
+        val headerEnviron = parseHeaders(in, Map())
+        val (environ, query) = extractQuery(headerEnviron)
 
-    val environ = parseHeaders(in, parsedRequestLine)
-
-    new Request(environ)
+        new Request(method, path, environ, query).some
+      }
+      case None => none[Request]
+    }
   }
 
-  private def parseRequestLine(requestLine: String): Map[String, String] = {
-    val Array(method, path, _*) = requestLine.split(" ")
-    Map("REQUEST_METHOD" -> method, "PATH_INFO" -> path)
+  private def parseRequestLine(requestLine: String): Option[(String, String)] = {
+    requestLine.split(" ") match {
+      case Array(method, path, _*) => (method, path).some
+      case _ => none
+    }
   }
 
   @tailrec
@@ -44,7 +61,7 @@ object Request {
     if (line != null && line != "") {
       val updatedEnviron = environ |+| (line.split(": ") match {
         case Array(key, value) => Map(key -> value)
-        case _ => Monoid[Map[String, String]].zero
+        case _ => Map()
       })
 
       parseHeaders(reader, updatedEnviron)
@@ -52,5 +69,27 @@ object Request {
     else {
       environ
     }
+  }
+
+  private def extractQuery(environ: Map[String, String]): (Map[String, String], Map[String, String]) = {
+    import java.net.URLDecoder
+
+    val pathInfo = environ.getOrElse("PATH_INFO", "/")
+
+    val (path, queryString) = pathInfo.split("\\?") match {
+      case Array(p, qs, _*) => (p, qs)
+      case Array(p) => (p, "")
+    }
+
+    // based on https://gist.github.com/gvolpe/6f91d905ed94136a2198
+    val queryMap = queryString.split("&").flatMap(q => {
+      val m = q.split("=", 2).map(s => URLDecoder.decode(s, "UTF-8"))
+      m match {
+        case Array(k, v) => (k -> v).some
+        case _ => none[(String, String)]
+      }
+    }).toMap
+
+    (environ + ("PATH_INFO" -> path, "QUERY_STRING" -> queryString), queryMap)
   }
 }

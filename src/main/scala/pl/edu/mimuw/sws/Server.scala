@@ -11,7 +11,12 @@ object Server {
 
       val out = new PrintStream(s.getOutputStream)
 
-      val response = Request(s).response
+      val request = Request(s)
+
+      val response = request match {
+        case Some(r) => r.response
+        case None => "HTTP/1.1 400 Bad Request\r\n\r\n"
+      }
       out.print(response)
       out.flush()
       s.close()
