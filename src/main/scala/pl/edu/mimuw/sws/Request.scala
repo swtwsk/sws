@@ -13,18 +13,12 @@ case class Request private(method: String,
                            path: String,
                            environ: Map[String, String],
                            query: Map[String, String]) {
-  def response: String = {
-    val body = "<html><head><title>Test Page</title></head><body>" +
-      "<div><b>Method: </b>" + method + "</div>" +
-      "<div><b>Path: </b>" + path + "</div>" +
-      "<div><b>Environ: </b>" + environ.show + "</div>" +
-      "<div><b>Query: </b>" + query.show + "</div>" +
-      "</body></html>"
-
-    "HTTP/1.1 200 OK\r\n" + "Content-Type: text/html; charset=UTF-8\r\n" +
-    "Content-Length: " + body.length + "\r\n" +
-    "Connection: close\r\n" + "\r\n" + body
-  }
+  def body: String = "<html><head><title>Test Page</title></head><body>" +
+        "<div><b>Method: </b>" + method + "</div>" +
+        "<div><b>Path: </b>" + path + "</div>" +
+        "<div><b>Environ: </b>" + environ.show + "</div>" +
+        "<div><b>Query: </b>" + query.show + "</div>" +
+        "</body></html>"
 }
 
 object Request {

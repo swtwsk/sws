@@ -14,11 +14,13 @@ object Server {
       val request = Request(s)
 
       val response = request match {
-        case Some(r) => r.response
-        case None => "HTTP/1.1 400 Bad Request\r\n\r\n"
+        case Some(r) => HttpResponse(r.body)
+        case None => HttpResponse("", statusCode = Http400)
       }
+
       out.print(response)
       out.flush()
+
       s.close()
     }
   }
