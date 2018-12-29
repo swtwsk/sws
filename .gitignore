@@ -7,6 +7,9 @@
 .idea
 project/
 
+# Scala worksheets
+*.sc
+
 # File-based project format
 *.iws
 
