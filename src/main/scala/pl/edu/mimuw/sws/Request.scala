@@ -31,12 +31,12 @@ object Request {
     val parsedRequestLine = parseRequestLine(in.readLine())
     parsedRequestLine match {
       case Some((method, pathInfo)) => {
-        val environ = parseHeaders(in, Map())
+        val environ = parseHeaders(in)
         val (path, query) = extractQuery(pathInfo)
 
         new Request(method, path, environ, query).some
       }
-      case None => none[Request]
+      case None => none
     }
   }
 
@@ -47,22 +47,22 @@ object Request {
     }
   }
 
-  @tailrec
-  private def parseHeaders(reader: BufferedReader,
-                           environ: Map[String, String]): Map[String, String] = {
-    val line = reader.readLine()
-
-    if (line != null && line != "") {
-      val updatedEnviron = environ |+| (line.split(": ") match {
-        case Array(key, value) => Map(key -> value)
-        case _ => Map()
-      })
-
-      parseHeaders(reader, updatedEnviron)
+  private def parseHeaders(reader: BufferedReader): Map[String, String] = {
+    @tailrec
+    def iter(br: BufferedReader, keys: List[Array[String]]): List[Array[String]] = {
+      val line = br.readLine()
+      if (line != null && line != "") {
+        iter(br, line.split(": ") :: keys)
+      }
+      else {
+        keys
+      }
     }
-    else {
-      environ
-    }
+
+    iter(reader, List()).flatMap(_ match {
+      case Array(k, v) => (k -> v).some
+      case _ => none[(String, String)]
+    }).toMap
   }
 
   private def extractQuery(pathInfo: String): (String, Map[String, String]) = {
@@ -75,7 +75,7 @@ object Request {
 
     // based on https://gist.github.com/gvolpe/6f91d905ed94136a2198
     val queryMap = queryString.split("&").flatMap(q => {
-      val m = q.split("=", 2).map(s => URLDecoder.decode(s, "UTF-8"))
+      val m = q.split("=").map(s => URLDecoder.decode(s, "UTF-8"))
       m match {
         case Array(k, v) => (k -> v).some
         case _ => none[(String, String)]
