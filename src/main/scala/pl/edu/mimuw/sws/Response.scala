@@ -1,8 +1,5 @@
 package pl.edu.mimuw.sws
 
-import scalaz._
-import Scalaz._
-
 sealed trait Response {
   def content: String
 

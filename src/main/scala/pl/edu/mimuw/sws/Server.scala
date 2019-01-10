@@ -1,27 +1,30 @@
 package pl.edu.mimuw.sws
+import scalaz.zio._
 
-import java.io._
-import java.net.ServerSocket
 
-object Server {
-  def main(args: Array[String]): Unit = {
-    val server = new ServerSocket(9999)
-    while (true) {
-      val s = server.accept()
+case class Server (configFile: String) {
+  val run: IO[Nothing, Unit] = for {
 
-      val out = new PrintStream(s.getOutputStream)
+    // read server data from config file
+    serverData <- ServerDataReader.readConfigFile(configFile)
 
-      val request = Request(s)
+    // create reference to hold server data
+    serverDataRef <- Ref(serverData)
 
-      val response = request match {
-        case Some(r) => HttpResponse(r.body)
-        case None => HttpResponse("", statusCode = Http400)
-      }
+    // create queue for logger
+    logQueue <- Queue.unbounded[Log]
 
-      out.print(response)
-      out.flush()
+    // open ServerSocket
+    serverSocket <- WebIO.listenOn(serverData)
 
-      s.close()
-    }
-  }
+    // start logger
+    loggerFiber <- Logger(serverDataRef, logQueue).log.forever.fork
+
+    // init. worker
+    worker = Worker(serverDataRef, logQueue, serverSocket)
+
+    // continuously accept
+    _ <- worker.talk.forever.catchAll(_ => IO.unit)
+
+  } yield ()
 }

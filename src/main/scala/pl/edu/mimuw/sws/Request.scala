@@ -1,5 +1,4 @@
 package pl.edu.mimuw.sws
-
 import java.io.{BufferedReader, InputStreamReader}
 
 import scala.annotation.tailrec
@@ -14,11 +13,11 @@ case class Request private(method: String,
                            environ: Map[String, String],
                            query: Map[String, String]) {
   def body: String = "<html><head><title>Test Page</title></head><body>" +
-        "<div><b>Method: </b>" + method + "</div>" +
-        "<div><b>Path: </b>" + path + "</div>" +
-        "<div><b>Environ: </b>" + environ.show + "</div>" +
-        "<div><b>Query: </b>" + query.show + "</div>" +
-        "</body></html>"
+    "<div><b>Method: </b>" + method + "</div>" +
+    "<div><b>Path: </b>" + path + "</div>" +
+    "<div><b>Environ: </b>" + environ.show + "</div>" +
+    "<div><b>Query: </b>" + query.show + "</div>" +
+    "</body></html>"
 }
 
 object Request {
