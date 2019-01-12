@@ -1,12 +1,11 @@
 package pl.edu.mimuw.sws
 import scalaz.zio._
 import java.io.IOException
-import java.net.ServerSocket
+import java.net.Socket
 
 
-case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], serverSocket: ServerSocket) {
-  val talk: IO[IOException, Unit] = for {
-    socket <- WebIO.accept(serverSocket)
+case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log]) {
+  def talk(socket: Socket): IO[IOException, Unit] = for {
     optRequest <- WebIO.getRequest(socket)
     response = optRequest match {
       case Some(r) => HttpResponse(r.body)

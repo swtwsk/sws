@@ -21,10 +21,15 @@ case class Server (configFile: String) {
     loggerFiber <- Logger(serverDataRef, logQueue).log.forever.fork
 
     // init. worker
-    worker = Worker(serverDataRef, logQueue, serverSocket)
+    worker = Worker(serverDataRef, logQueue)
+
+    acceptAndFork = for {
+      socket <- WebIO.accept(serverSocket)
+      _ <- worker.talk(socket).fork
+    } yield ()
 
     // continuously accept
-    _ <- worker.talk.forever.catchAll(_ => IO.unit)
+    _ <- acceptAndFork.forever.catchAll(_ => IO.unit)
 
   } yield ()
 }
