@@ -7,10 +7,9 @@ import scalaz._
 import Scalaz._
 
 // TODO: Maybe we should pack query into special Query class?
-// TODO: What about protocol?
-case class Request private(method: String,
+case class Request private(method: HttpMethod,
                            path: String,
-                           protocol: String,
+                           protocol: HttpProtocol,
                            environ: Map[String, String],
                            query: Map[String, String],
                            body: List[Byte]) {
@@ -29,26 +28,22 @@ object Request {
     val LF: Byte = '\n'.toByte
   }
 
-  def apply(socket: java.net.Socket): Option[Request] = {
+  def apply(socket: java.net.Socket): \/[HttpError, Request] = {
     val in: InputStream = socket.getInputStream
 
-    readUntilDoubleCRLF(in) match {
-      case Some((headers, bodyStart)) =>
-        val headersList = headers.split("\r\n").toList
-        parseRequestLine(headersList.headOption.getOrElse("")) match {
-          case Some((method, pathInfo, protocol)) =>
-            val environ = parseHeaders(headersList.tailOption.getOrElse(Nil))
-            val (path, query) = extractQuery(pathInfo)
-            val body = readBody(in, bodyStart, environ.getOrElse("Content-Length", "0").parseInt.toOption.getOrElse(0))
-
-            new Request(method, path, protocol, environ, query, body).some
-          case None => none
-        }
-      case None => none
-    }
+    for {
+      readPair <- readUntilDoubleCRLF(in)
+      (headers, bodyStart) = readPair
+      headersList = headers.split("\r\n").toList
+      parsedRequestLine <- parseRequestLine(headersList.headOption.getOrElse(""))
+      (method, pathInfo, protocol) = parsedRequestLine
+      environ = parseHeaders(headersList.tailOption.getOrElse(Nil))
+      (path, query) = extractQuery(pathInfo)
+      body = readBody(in, bodyStart, environ.getOrElse("Content-Length", "0").parseInt.toOption.getOrElse(0))
+    } yield new Request(method, path, protocol, environ, query, body)
   }
 
-  private def readUntilDoubleCRLF(is: InputStream): Option[(String, List[Byte])] = {
+  private def readUntilDoubleCRLF(is: InputStream): \/[HttpError, (String, List[Byte])] = {
     @tailrec
     def splitInput(left: List[Byte], right: List[Byte]): (List[Byte], List[Byte], Boolean) = {
       import HttpConstants.{CR, LF}
@@ -67,15 +62,16 @@ object Request {
     val buffer = new Array[Byte](1024)
 
     @tailrec
-    def readStringFromSocket(rest: List[Byte]): Option[(String, List[Byte])] = {
+    def readStringFromSocket(rest: List[Byte]): \/[HttpError, (String, List[Byte])] = {
       is.read(buffer) match {
-        case 0 => none
+        case 0 => Http400.left
         case count: Int =>
           val (str, bytes, split) = splitInput(rest, buffer.take(count).toList)
-          if (split) (str.reverse.map(_.toChar).mkString, bytes).some else readStringFromSocket(str)
+          if (split) (str.reverse.map(_.toChar).mkString, bytes).right else readStringFromSocket(str)
       }
     }
 
+    // TODO: Handle parsing errors and timeouts!
     readStringFromSocket(Nil)
   }
 
@@ -93,11 +89,20 @@ object Request {
     bodyStart ::: bodyRest
   }
 
-  private def parseRequestLine(requestLine: String): Option[(String, String, String)] = {
-    requestLine.split(" ") match {
-      case Array(method, path, protocol) => (method, path, protocol).some
-      case _ => none
+  private def parseRequestLine(requestLine: String): \/[HttpError, (HttpMethod, String, HttpProtocol)] = {
+    val splitMatch: \/[HttpError, (String, String, String)] = {
+      requestLine.split(" ") match {
+        case Array(method, path, protocol) => (method, path, protocol).right
+        case _ => Http400.left
+      }
     }
+
+    for {
+      split <- splitMatch
+      (m, path, pr) = split
+      method <- HttpMethod(m)
+      protocol <- HttpProtocol(pr)
+    } yield (method, path, protocol)
   }
 
   private def parseHeaders(stringList: List[String]): Map[String, String] = {
