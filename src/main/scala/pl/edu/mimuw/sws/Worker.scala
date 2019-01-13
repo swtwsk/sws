@@ -8,7 +8,7 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log]) {
   def talk(socket: Socket): IO[IOException, Unit] = for {
     optRequest <- WebIO.getRequest(socket)
     response = optRequest match {
-      case Some(r) => HttpResponse(r.body)
+      case Some(r) => HttpResponse(r.responseBody)
       case None => HttpResponse("", statusCode = Http400)
     }
     _ <- WebIO.send(socket, response)
