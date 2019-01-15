@@ -13,12 +13,13 @@ case class Request private(method: HttpMethod,
                            environ: Map[String, String],
                            query: Map[String, String],
                            body: List[Byte]) {
+
   def responseBody: String = "<html><head><title>Test Page</title></head><body>" +
     "<div><b>Method: </b>" + method + "</div>" +
     "<div><b>Path: </b>" + path + "</div>" +
     "<div><b>Environ: </b>" + environ.show + "</div>" +
     "<div><b>Query: </b>" + query.show + "</div>" +
-    "<div><b>Body: </b>" + body.show + "</div>" +
+    "<div><b>Body: </b>" + body.map(_.toChar).mkString + "</div>" +
     "</body></html>"
 }
 
@@ -39,7 +40,8 @@ object Request {
       (method, pathInfo, protocol) = parsedRequestLine
       environ = parseHeaders(headersList.tailOption.getOrElse(Nil))
       (path, query) = extractQuery(pathInfo)
-      body = readBody(in, bodyStart, environ.getOrElse("Content-Length", "0").parseInt.toOption.getOrElse(0))
+      body = if (!method.hasBody) List()
+        else readBody(in, bodyStart, environ.getOrElse("Content-Length", "0").parseInt.toOption.getOrElse(0))
     } yield new Request(method, path, protocol, environ, query, body)
   }
 
