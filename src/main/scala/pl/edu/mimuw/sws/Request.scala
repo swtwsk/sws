@@ -138,6 +138,8 @@ object Request {
       }
     }).toMap
 
-    (path, queryMap)
+    val decodedPath = path.split("/").map(s => URLDecoder.decode(s, "UTF-8")).mkString("/")
+
+    (decodedPath, queryMap)
   }
 }
