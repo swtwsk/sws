@@ -54,35 +54,6 @@ object UrlResolver {
     }
   }
 
-//  def indexView(request: Request, args: Map[String, String]): Response = HttpResponse(
-//    "<html><head><title>Index</title></head><body>" +
-//      "<div><b>Index</b></div>" +
-//      "</body></html>"
-//  )
-//
-//  def aView(request: Request, args: Map[String, String]): Response = HttpResponse(
-//    "<html><head><title>a</title></head><body>" +
-//      "<div><b>a</b></div>" +
-//      "</body></html>"
-//  )
-//
-//  def bView(request: Request, args: Map[String, String]): Response = HttpResponse(
-//    "<html><head><title>b</title></head><body>" +
-//      "<div><b>b</b></div>" +
-//      "</body></html>"
-//  )
-//
-//  def aaView(request: Request, args: Map[String, String]): Response = HttpResponse(
-//    "<html><head><title>a</title></head><body>" +
-//      "<div><b>a/cos</b></div>" +
-//      "<div><b>Args: </b>" + args.mkString + "</div>" +
-//      "</body></html>"
-//  )
-
-//  val tree: PathNode = PathNode(List(
-//    PathNode(List(PathNode(List(), Left(Arg("cos")), aaView)), Right("a"), aView),
-//    PathNode(List(), Right("b"), bView)
-//  ), Right(""), indexView)
   val tree: PathNode = PathNode(List())
 
   def resolve(path: String, pathTree: PathNode): \/[HttpError, ReqView] = {
