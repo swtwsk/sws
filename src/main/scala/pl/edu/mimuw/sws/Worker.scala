@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit
 
 import scalaz.zio.duration.Duration
 import scalaz.{-\/, \/, \/-}
-import pl.edu.mimuw.sws.UrlResolver.PathNode
 
 case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: PathNode) {
   def talk(socket: Socket): IO[Nothing, Unit] =
@@ -22,10 +21,12 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
         case \/-(r) => UrlResolver.resolve(r.path, pathTree) match {
           case \/-(v) => v(r)
           case -\/(error) => HttpResponse("NOT FOUND", statusCode = error)
+          // TODO: It is a mere placeholder for a real error handling dependent on specific problem -
+          //  fix it along with Http3xx error codes
         }
         case -\/(error) => HttpResponse("", statusCode = error)
       }
-      case None => HttpResponse("TIMEOUT", statusCode = Http400)
+      case None => HttpResponse("TIMEOUT", statusCode = Http408)
     }
   )
 }

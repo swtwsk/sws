@@ -41,6 +41,11 @@ case object Http405 extends HttpError {
   val reason = "Method Not Allowed"
 }
 
+case object Http408 extends HttpError {
+  val code = 408
+  val reason = "Request Timeout"
+}
+
 case object Http414 extends HttpError {
   val code = 414
   val reason = "Method Not Allowed"

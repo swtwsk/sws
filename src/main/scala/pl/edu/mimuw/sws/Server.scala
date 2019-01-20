@@ -1,9 +1,9 @@
 package pl.edu.mimuw.sws
-import pl.edu.mimuw.sws.UrlResolver.{PathNode, View}
+import pl.edu.mimuw.sws.UrlResolver.Controller
 import scalaz.zio._
 
 
-case class Server (configFile: String, urls: List[(String, View)]) {
+case class Server (configFile: String, urls: List[(String, Controller)]) {
   val run: IO[Nothing, Unit] = for {
 
     // create queue for logger
