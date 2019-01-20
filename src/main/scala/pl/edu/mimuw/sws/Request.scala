@@ -1,64 +1,121 @@
 package pl.edu.mimuw.sws
-import java.io.{BufferedReader, InputStreamReader}
+import java.io.InputStream
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Map  // explicit immutability
+import scala.collection.immutable.Map
 import scalaz._
 import Scalaz._
 
-// TODO: Hide this somehow (private class shows warnings)
 // TODO: Maybe we should pack query into special Query class?
-case class Request private(method: String,
+case class Request private(method: HttpMethod,
                            path: String,
+                           protocol: HttpProtocol,
                            environ: Map[String, String],
-                           query: Map[String, String]) {
-  def body: String = "<html><head><title>Test Page</title></head><body>" +
+                           query: Map[String, String],
+                           body: List[Byte]) {
+
+  def responseBody: String = "<html><head><title>Test Page</title></head><body>" +
     "<div><b>Method: </b>" + method + "</div>" +
     "<div><b>Path: </b>" + path + "</div>" +
     "<div><b>Environ: </b>" + environ.show + "</div>" +
     "<div><b>Query: </b>" + query.show + "</div>" +
+    "<div><b>Body: </b>" + body.map(_.toChar).mkString + "</div>" +
     "</body></html>"
 }
 
 object Request {
-  // At first it was called parseRequest, but `apply` seems to be
-  // a syntactic sugar we could use
-  def apply(socket: java.net.Socket): Option[Request] = {
-    // TODO: Probably we should wrap it into some intelligent side-effect handler
-    val in = new BufferedReader(new InputStreamReader(socket.getInputStream))
-
-    val parsedRequestLine = parseRequestLine(in.readLine())
-    parsedRequestLine match {
-      case Some((method, pathInfo)) => {
-        val environ = parseHeaders(in)
-        val (path, query) = extractQuery(pathInfo)
-
-        new Request(method, path, environ, query).some
-      }
-      case None => none
-    }
+  object HttpConstants {
+    val CR: Byte = '\r'.toByte
+    val LF: Byte = '\n'.toByte
   }
 
-  private def parseRequestLine(requestLine: String): Option[(String, String)] = {
-    requestLine.split(" ") match {
-      case Array(method, path, _*) => (method, path).some
-      case _ => none
-    }
+  def apply(socket: java.net.Socket): \/[HttpError, Request] = {
+    val in: InputStream = socket.getInputStream
+
+    for {
+      readPair <- readUntilDoubleCRLF(in)
+      (headers, bodyStart) = readPair
+      headersList = headers.split("\r\n").toList
+      parsedRequestLine <- parseRequestLine(headersList.headOption.getOrElse(""))
+      (method, pathInfo, protocol) = parsedRequestLine
+      environ = parseHeaders(headersList.tailOption.getOrElse(Nil))
+      (path, query) = extractQuery(pathInfo)
+      body = if (!method.hasBody) List()
+        else readBody(in, bodyStart, environ.getOrElse("Content-Length", "0").parseInt.toOption.getOrElse(0))
+    } yield new Request(method, path, protocol, environ, query, body)
   }
 
-  private def parseHeaders(reader: BufferedReader): Map[String, String] = {
+  private def readUntilDoubleCRLF(is: InputStream): \/[HttpError, (String, List[Byte])] = {
     @tailrec
-    def iter(br: BufferedReader, keys: List[Array[String]]): List[Array[String]] = {
-      val line = br.readLine()
-      if (line != null && line != "") {
-        iter(br, line.split(": ") :: keys)
-      }
-      else {
-        keys
+    def splitInput(left: List[Byte], right: List[Byte]): (List[Byte], List[Byte], Boolean) = {
+      import HttpConstants.{CR, LF}
+
+      right match {
+        case h :: hr => left match {
+          case l1 :: l2 :: l3 :: _ if h == LF && l1 == CR && l2 == LF && l3 == CR =>
+            (h :: left, hr, true)
+          case _ => splitInput(h :: left, hr)
+        }
+        case Nil =>
+          (left, Nil, false)
       }
     }
 
-    iter(reader, List()).flatMap(_ match {
+    val buffer = new Array[Byte](1024)
+
+    @tailrec
+    def readStringFromSocket(rest: List[Byte]): \/[HttpError, (String, List[Byte])] = {
+      is.read(buffer) match {
+        case 0 => Http400.left
+        case count: Int =>
+          val (str, bytes, split) = splitInput(rest, buffer.take(count).toList)
+          if (split) (str.reverse.map(_.toChar).mkString, bytes).right else readStringFromSocket(str)
+      }
+    }
+
+    // TODO: Handle parsing errors and timeouts!
+    readStringFromSocket(Nil)
+  }
+
+  // TODO: We should also parse chunked transfer encoding
+  //  https://en.wikipedia.org/wiki/Chunked_transfer_encoding
+  private def readBody(is: InputStream, bodyStart: List[Byte], length: Int): List[Byte] = {
+    @tailrec
+    def readFromSocket(left: Int, read: List[Byte]): List[Byte] = {
+      if (left <= 0) Nil else readFromSocket(left - 1, is.read.toByte :: read)
+    }
+
+    val bodyStartLen = bodyStart.length
+    val bodyRest = readFromSocket(length - bodyStartLen, Nil)
+
+    bodyStart ::: bodyRest
+  }
+
+  private def parseRequestLine(requestLine: String): \/[HttpError, (HttpMethod, String, HttpProtocol)] = {
+    val splitMatch: \/[HttpError, (String, String, String)] = {
+      requestLine.split(" ") match {
+        case Array(method, path, protocol) => (method, path, protocol).right
+        case _ => Http400.left
+      }
+    }
+
+    for {
+      split <- splitMatch
+      (m, path, pr) = split
+      method <- HttpMethod(m)
+      protocol <- HttpProtocol(pr)
+    } yield (method, path, protocol)
+  }
+
+  private def parseHeaders(stringList: List[String]): Map[String, String] = {
+    @tailrec
+    def iter(lines: List[String], keys: List[Array[String]]): List[Array[String]] = lines match {
+      case "" :: _ => keys
+      case line :: lr => iter(lr, line.split(": ") :: keys)
+      case Nil => keys
+    }
+
+    iter(stringList, List()).flatMap(_ match {
       case Array(k, v) => (k -> v).some
       case _ => none[(String, String)]
     }).toMap
@@ -81,6 +138,8 @@ object Request {
       }
     }).toMap
 
-    (path, queryMap)
+    val decodedPath = path.split("/").map(s => URLDecoder.decode(s, "UTF-8")).mkString("/")
+
+    (decodedPath, queryMap)
   }
 }

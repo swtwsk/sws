@@ -1,8 +1,9 @@
 package pl.edu.mimuw.sws
+import pl.edu.mimuw.sws.UrlResolver.{PathNode, View}
 import scalaz.zio._
 
 
-case class Server (configFile: String) {
+case class Server (configFile: String, urls: List[(String, View)]) {
   val run: IO[Nothing, Unit] = for {
 
     // create queue for logger
@@ -22,7 +23,7 @@ case class Server (configFile: String) {
     serverSocket <- Combinators.insist(WebIO.listenOn(serverData))(Log.to(logQueue))
 
     // init. worker
-    worker = Worker(serverDataRef, logQueue)
+    worker = Worker(serverDataRef, logQueue, PathNode(urls))
 
     acceptAndFork = for {
       socket <- Combinators.insist(WebIO.accept(serverSocket))(Log.to(logQueue))

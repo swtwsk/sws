@@ -10,13 +10,10 @@ sealed trait Response {
   def charset: String
 
   def response: String = {
-    "HTTP/1.1 " + statusCode + "\r\n" + (statusCode match {
-      case Http200 =>
-        "Content-Type: " + contentType + "; charset=" + charset + "\r\n" +
-          "Content-Length: " + content.length + "\r\n" +
-          "Connection: close\r\n" + "\r\n" + content
-      case _ => "Connection: close\r\n" // temporary placeholder for other codes
-    })
+    "HTTP/1.1 " + statusCode + "\r\n" +
+      "Content-Type: " + contentType + "; charset=" + charset + "\r\n" +
+      "Content-Length: " + content.length + "\r\n" +
+      "Connection: close\r\n" + "\r\n" + content
   }
 
   override def toString: String = response
