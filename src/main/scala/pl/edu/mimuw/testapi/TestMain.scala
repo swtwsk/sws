@@ -15,7 +15,9 @@ case object TestMain extends ServerMain {
     ("/a/b/<name>", pathView("/a/b/<name>", _: Request, _: Map[String, String])),
     ("/a/b/<name>/id/<id>", pathView("/a/b/<name>/id/<id>", _: Request, _: Map[String, String])),
     ("/test", testView),
-    ("/redirect", googleRedirect))
+    ("/redirect", googleRedirect),
+    ("/cookie", setCookieView),
+  )
 
   def indexView(request: Request, args: Map[String, String]): Response = HttpResponse(
     "<html><head><title>Index</title></head><body>" +
@@ -33,4 +35,11 @@ case object TestMain extends ServerMain {
   def testView(request: Request, args:Map[String, String]): Response = HttpResponse(request.responseBody)
 
   def googleRedirect(request: Request, args: Map[String, String]): Response = HttpRedirectResponse("http://google.com")
+
+  def setCookieView(request: Request, args:Map[String, String]): Response = HttpResponse(
+    "<html><head><title>Set Cookie</title></head><body>" +
+      "<div><b>theme</b> = <b>light</b></div>" +
+      "</body></html>",
+    cookies = Map("theme" -> "light")
+  )
 }

@@ -39,7 +39,11 @@ case class HttpResponse(content: String,
                         contentType: String = "text/html",
                         statusCode: HttpStatus = Http200,
                         charset: String = "utf-8",
-                        headers: Map[String, String] = Map()) extends BodyResponse
+                        headers: Map[String, String] = Map(),
+                        cookies: Map[String, String] = Map()) extends BodyResponse {
+  override protected def getHeaders: List[String] =
+    super.getHeaders ::: (cookies map {e => "Set-Cookie: " + e._1 + "=" + e._2}).toList
+}
 
 // TODO: JsonResponse
 
