@@ -11,6 +11,6 @@ abstract class ServerMain {
   def main(args: Array[String]): Unit = {
     val configFile = if (args.length > 0) args(0) else "default.conf"
     val server = Server(configFile, urls)
-    rts.unsafeRun(server.run)
+    rts.unsafeRunSync(server.run)
   }
 }

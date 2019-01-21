@@ -13,7 +13,7 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
                       .catchAll(Log.to(logQueue))
 
   def getRequest(socket: Socket): IO[Exception, Option[\/[HttpError, Request]]] =
-    WebIO.getRequest(socket).timeout(Duration(5, TimeUnit.SECONDS))
+    WebIO.getRequest(socket).map(Some(_)) // TODO socket timeout + catch to Option here
 
   def getResponse(optRequest: Option[\/[HttpError, Request]]): IO[Exception, Response] = IO.syncException(
     optRequest match {
