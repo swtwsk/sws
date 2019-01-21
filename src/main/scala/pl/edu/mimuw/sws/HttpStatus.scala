@@ -10,9 +10,9 @@ sealed trait HttpStatus {
   override def toString: String = status
 }
 
+sealed trait HttpRedirect extends HttpStatus
 sealed trait HttpError extends HttpStatus
 
-// TODO: Think about name convention
 case class HttpUndefinedStatus(code: Int, reason: String) extends HttpStatus
 
 case object Http200 extends HttpStatus {
@@ -20,8 +20,17 @@ case object Http200 extends HttpStatus {
   val reason = "OK"
 }
 
-// TODO: HOW TO HANDLE REDIRECT ??? edit: HOW TO HANDLE ALL OF THE 3xx ???
-case class Http302(url: String) extends HttpStatus {
+case object Http201 extends HttpStatus {
+  val code = 201
+  val reason = "Created"
+}
+
+case object Http204 extends HttpStatus {
+  val code = 204
+  val reason = "No Content"
+}
+
+case object Http302 extends HttpRedirect {
   val code = 302
   val reason = "Found"
 }
@@ -29,6 +38,16 @@ case class Http302(url: String) extends HttpStatus {
 case object Http400 extends HttpError {
   val code = 400
   val reason = "Bad Request"
+}
+
+case object Http401 extends HttpError {
+  val code = 401
+  val reason = "Unauthorized"
+}
+
+case object Http403 extends HttpError {
+  val code = 403
+  val reason = "Forbidden"
 }
 
 case object Http404 extends HttpError{
@@ -48,7 +67,18 @@ case object Http408 extends HttpError {
 
 case object Http414 extends HttpError {
   val code = 414
-  val reason = "Method Not Allowed"
+  val reason = "URI Too Long"
+}
+
+// We had to implement this
+case object Http418 extends HttpError {
+  val code = 418
+  val reason = "I'm a teapot"
+}
+
+case object Http500 extends HttpError {
+  val code = 500
+  val reason = "Internal Server Error"
 }
 
 case object Http505 extends HttpError {
