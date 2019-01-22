@@ -8,13 +8,13 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
   def talk(socket: Socket): IO[Nothing, Unit] = {
     val base = for {
       request <- getRequest(socket)
-      _ <- Log.debug(logQueue)("got request")
       response <- getResponse(request)
       _ <- WebIO.send(socket, response)
     } yield keepAlive(request)
 
     lazy val cont: IO[Exception, Unit] = for {
       keep <- base
+      _ <- Log.debug(logQueue)("Worker: keep-alive? " + keep)
       next = if (keep) cont else IO.unit
       _ <- next
     } yield ()
@@ -24,20 +24,28 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
   }
 
   def getRequest(socket: Socket): IO[Exception, Option[\/[HttpError, Request]]] =
+    Log.debug(logQueue)("Worker: getting request") *>
     WebIO.getRequest(socket).map(Some(_)) // TODO socket timeout + catch to Option here
 
-  def getResponse(optRequest: Option[\/[HttpError, Request]]): IO[Exception, Response] = IO.syncException(
-    optRequest match {
-      case Some(evr) => evr match {
-        case \/-(r) => UrlResolver.resolve(r.path, pathTree) match {
-          case \/-(v) => v(r)
+
+  def getResponse(optRequest: Option[\/[HttpError, Request]]): IO[Exception, Response] =
+    Log.debug(logQueue)("Worker: getting response") *>
+    IO.syncException(
+      optRequest match {
+        case Some(evr) => evr match {
+          case \/-(r) => UrlResolver.resolve(r.path, pathTree) match {
+            case \/-(v) => v(r)
+            case -\/(error) => HttpErrorResponse(error, content = error.toString)
+          }
           case -\/(error) => HttpErrorResponse(error, content = error.toString)
         }
-        case -\/(error) => HttpErrorResponse(error, content = error.toString)
+        case None => HttpErrorResponse(Http408, Http408.toString)
       }
-      case None => HttpErrorResponse(Http408, Http408.toString)
-    }
-  )
+    )
+
+  def send(socket: Socket, response: Response): IO[Exception, Any] =
+    Log.debug(logQueue)("Worker: sending response") *>
+    WebIO.send(socket, response)
 
   def keepAlive(optRequest: Option[\/[HttpError, Request]]): Boolean = {
     optRequest match {

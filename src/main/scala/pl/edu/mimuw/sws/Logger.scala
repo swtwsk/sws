@@ -10,7 +10,7 @@ case class Logger (serverDataRef: Ref[ServerData],
   val log: IO[Nothing, Unit] = for {
     log <- logQueue.take
     serverData <- serverDataRef.get
-    print = if (log.severity >= severity)
+    print = if (log.severity <= severity)
               putStrLn("Log (" + log.severity + "): " + log.message)
             else IO.unit
     _ <- print

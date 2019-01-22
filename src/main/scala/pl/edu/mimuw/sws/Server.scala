@@ -13,11 +13,16 @@ case class Server (configFile: String, urls: List[(String, Controller)]) {
     serverData <- ServerDataReader.readConfigFile(configFile)
                                   .catchAll(e => Log.exception(logQueue)(e) *> IO.point(ServerData.default))
 
+    // debug info
+    _ <- Log.debug(logQueue)("Server port: " + serverData.port)
+
     // create reference to hold server data
     serverDataRef <- Ref(serverData)
 
     // start logger
     loggerFiber <- Logger(serverDataRef, logQueue, Severity.Debug).log.forever.fork
+
+    _ <- Log.debug(logQueue)("Server: starting to listen")
 
     // open ServerSocket
     serverSocket <- Combinators.insist(WebIO.listenOn(serverData))(Log.exception(logQueue))

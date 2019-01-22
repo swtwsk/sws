@@ -1,6 +1,5 @@
 package pl.edu.mimuw.sws
 import scalaz.zio._
-import scalaz.zio.console._
 
 
 object Severity extends Enumeration {
