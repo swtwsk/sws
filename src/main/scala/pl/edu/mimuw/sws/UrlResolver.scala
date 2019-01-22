@@ -37,7 +37,7 @@ case class UrlResolver(static: Option[String], collector: Option[StaticCollector
 
     static match {
       case Some(staticPath) =>
-        val regex = (staticPath + """.*""").r
+        val regex = ("""^""" + staticPath + """.*""").r
         regex.findFirstMatchIn(path) match {
           case Some(_) => collector match {
             case Some(c) => (c.serveStatic(_: Request)).right
