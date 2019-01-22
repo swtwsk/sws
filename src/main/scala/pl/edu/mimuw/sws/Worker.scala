@@ -8,16 +8,19 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
   def talk(socket: Socket): IO[Nothing, Unit] = {
     val base = for {
       request <- getRequest(socket)
+      _ <- Log.debug(logQueue)("got request")
       response <- getResponse(request)
       _ <- WebIO.send(socket, response)
     } yield keepAlive(request)
+
     lazy val cont: IO[Exception, Unit] = for {
       keep <- base
       next = if (keep) cont else IO.unit
       _ <- next
     } yield ()
+
     cont.ensuring(WebIO.close(socket))
-        .catchAll(Log.to(logQueue))
+        .catchAll(Log.exception(logQueue))
   }
 
   def getRequest(socket: Socket): IO[Exception, Option[\/[HttpError, Request]]] =
