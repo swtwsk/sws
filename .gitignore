@@ -6,6 +6,7 @@
 # User-specific stuff
 .idea
 project/
+private/
 
 # Scala worksheets
 *.sc
