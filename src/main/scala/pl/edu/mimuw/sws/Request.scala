@@ -32,6 +32,7 @@ object Request {
   }
 
   def apply(socket: java.net.Socket): \/[HttpError, Request] = {
+    socket.setSoTimeout(2000)
     val in: InputStream = socket.getInputStream
 
     for {

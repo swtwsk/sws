@@ -25,7 +25,9 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
 
   def getRequest(socket: Socket): IO[Exception, Option[\/[HttpError, Request]]] =
     Log.debug(logQueue)("Worker: getting request") *>
-    WebIO.getRequest(socket).map(Some(_)) // TODO socket timeout + catch to Option here
+    WebIO.getRequest(socket).map(Some(_))
+                            .catchAll(_ => Log.debug(logQueue)("Worker: timeout") *>
+                                           IO.point(Option.empty[\/[HttpError, Request]]))
 
   def send(socket: Socket, response: Response): IO[Exception, Any] =
     Log.debug(logQueue)("Worker: sending response") *>
