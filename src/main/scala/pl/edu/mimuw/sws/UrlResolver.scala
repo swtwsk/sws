@@ -2,14 +2,14 @@ package pl.edu.mimuw.sws
 
 import scalaz._
 import Scalaz._
+import scalaz.zio.IO
 
 import scala.annotation.tailrec
 
-object UrlResolver {
-  case class Arg(name: String)
-  type ArgsMap = Map[String, String]
-  type Controller = (Request, ArgsMap) => Response
-  type RequestController = Request => Response
+case class Arg(name: String)
+
+case class UrlResolver(static: Option[String], collector: Option[StaticCollector]) {
+  import UrlResolver.{ArgsMap, RequestController}
 
   def resolve(path: String, pathTree: PathNode): \/[HttpError, RequestController] = {
     @tailrec
@@ -28,11 +28,36 @@ object UrlResolver {
           case None => Http404.left
         }
         case Nil => t.controller match {
-          case Some(view) => (view(_: Request, args)).right
+          case Some(controller) => (controller(_: Request, args)).right
           case None => Http404.left
         }
       }
 
-    recResolve(path.split("/").toList.tailOption.getOrElse(Nil), pathTree, Map())
+    static match {
+      case Some(staticPath) =>
+        val regex = (staticPath + """.*""").r
+        regex.findFirstMatchIn(path) match {
+          case Some(_) => collector match {
+            case Some(c) => (c.serveStatic(_: Request)).right
+            case None => Http404.left
+          }
+          case None => recResolve(path.split("/").toList.tailOption.getOrElse(Nil), pathTree, Map())
+        }
+      case None => recResolve(path.split("/").toList.tailOption.getOrElse(Nil), pathTree, Map())
+    }
+
+
+  }
+}
+
+object UrlResolver {
+  type ArgsMap = Map[String, String]
+  type Controller = (Request, ArgsMap) => Response
+  type IOController = (Request, ArgsMap) => IO[Exception, Response]
+  type RequestController = Request => IO[Exception, Response]
+
+  def apply(static: Option[(String, String)]): UrlResolver = static match {
+    case Some((staticPath, staticFolder)) => new UrlResolver(staticPath.some, StaticCollector(staticPath, staticFolder).some)
+    case None => new UrlResolver(none, none)
   }
 }

@@ -4,7 +4,7 @@ import java.net.Socket
 
 import scalaz.{-\/, \/, \/-}
 
-case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: PathNode) {
+case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: PathNode, resolver: UrlResolver) {
   def talk(socket: Socket): IO[Nothing, Unit] = {
     val base = for {
       request <- getRequest(socket)
@@ -27,25 +27,22 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
     Log.debug(logQueue)("Worker: getting request") *>
     WebIO.getRequest(socket).map(Some(_)) // TODO socket timeout + catch to Option here
 
-
-  def getResponse(optRequest: Option[\/[HttpError, Request]]): IO[Exception, Response] =
-    Log.debug(logQueue)("Worker: getting response") *>
-    IO.syncException(
-      optRequest match {
-        case Some(evr) => evr match {
-          case \/-(r) => UrlResolver.resolve(r.path, pathTree) match {
-            case \/-(v) => v(r)
-            case -\/(error) => HttpErrorResponse(error, content = error.toString)
-          }
-          case -\/(error) => HttpErrorResponse(error, content = error.toString)
-        }
-        case None => HttpErrorResponse(Http408, Http408.toString)
-      }
-    )
-
   def send(socket: Socket, response: Response): IO[Exception, Any] =
     Log.debug(logQueue)("Worker: sending response") *>
     WebIO.send(socket, response)
+
+  def getResponse(optRequest: Option[\/[HttpError, Request]]): IO[Exception, Response] =
+    Log.debug(logQueue)("Worker: getting response") *> (
+    optRequest match {
+      case Some(evr) => evr match {
+        case \/-(r) => resolver.resolve(r.path, pathTree) match {
+          case \/-(v) => v(r)
+          case -\/(error) => IO.point(HttpErrorResponse(error, content = error.toString))
+        }
+        case -\/(error) => IO.point(HttpErrorResponse(error, content = error.toString))
+      }
+      case None => IO.point(HttpErrorResponse(Http408, Http408.toString))
+    })
 
   def keepAlive(optRequest: Option[\/[HttpError, Request]]): Boolean = {
     optRequest match {
