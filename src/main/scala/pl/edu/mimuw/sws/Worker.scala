@@ -20,13 +20,11 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
       case Some(evr) => evr match {
         case \/-(r) => UrlResolver.resolve(r.path, pathTree) match {
           case \/-(v) => v(r)
-          case -\/(error) => HttpResponse("NOT FOUND", statusCode = error)
-          // TODO: It is a mere placeholder for a real error handling dependent on specific problem -
-          //  fix it along with Http3xx error codes
+          case -\/(error) => HttpErrorResponse(error, content = error.toString)
         }
-        case -\/(error) => HttpResponse("", statusCode = error)
+        case -\/(error) => HttpErrorResponse(error, content = error.toString)
       }
-      case None => HttpResponse("TIMEOUT", statusCode = Http408)
+      case None => HttpErrorResponse(Http408, Http408.toString)
     }
   )
 }

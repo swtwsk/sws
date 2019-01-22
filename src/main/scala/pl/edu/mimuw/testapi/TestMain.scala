@@ -1,6 +1,6 @@
 package pl.edu.mimuw.testapi
 
-import pl.edu.mimuw.sws.{ServerMain, HttpResponse, Request, Response}
+import pl.edu.mimuw.sws._
 
 case object TestMain extends ServerMain {
   val urls = List(
@@ -14,7 +14,10 @@ case object TestMain extends ServerMain {
     ("/a/<id>", pathView("/a/<id>", _: Request, _: Map[String, String])),
     ("/a/b/<name>", pathView("/a/b/<name>", _: Request, _: Map[String, String])),
     ("/a/b/<name>/id/<id>", pathView("/a/b/<name>/id/<id>", _: Request, _: Map[String, String])),
-    ("/test", testView))
+    ("/test", testView),
+    ("/redirect", googleRedirect),
+    ("/cookie", setCookieView),
+  )
 
   def indexView(request: Request, args: Map[String, String]): Response = HttpResponse(
     "<html><head><title>Index</title></head><body>" +
@@ -30,4 +33,13 @@ case object TestMain extends ServerMain {
   )
 
   def testView(request: Request, args:Map[String, String]): Response = HttpResponse(request.responseBody)
+
+  def googleRedirect(request: Request, args: Map[String, String]): Response = HttpRedirectResponse("http://google.com")
+
+  def setCookieView(request: Request, args:Map[String, String]): Response = HttpResponse(
+    "<html><head><title>Set Cookie</title></head><body>" +
+      "<div><b>theme</b> = <b>light</b></div>" +
+      "</body></html>",
+    cookies = Map("theme" -> "light")
+  )
 }

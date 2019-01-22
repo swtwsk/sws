@@ -12,6 +12,7 @@ case class Request private(method: HttpMethod,
                            protocol: HttpProtocol,
                            environ: Map[String, String],
                            query: Map[String, String],
+                           cookies: Map[String, String],
                            body: List[Byte]) {
 
   def responseBody: String = "<html><head><title>Test Page</title></head><body>" +
@@ -19,6 +20,7 @@ case class Request private(method: HttpMethod,
     "<div><b>Path: </b>" + path + "</div>" +
     "<div><b>Environ: </b>" + environ.show + "</div>" +
     "<div><b>Query: </b>" + query.show + "</div>" +
+    "<div><b>Cookies: </b>" + cookies.show + "</div>" +
     "<div><b>Body: </b>" + body.map(_.toChar).mkString + "</div>" +
     "</body></html>"
 }
@@ -38,11 +40,11 @@ object Request {
       headersList = headers.split("\r\n").toList
       parsedRequestLine <- parseRequestLine(headersList.headOption.getOrElse(""))
       (method, pathInfo, protocol) = parsedRequestLine
-      environ = parseHeaders(headersList.tailOption.getOrElse(Nil))
+      (environ, cookies) = extractCookies(parseHeaders(headersList.tailOption.getOrElse(Nil)))
       (path, query) = extractQuery(pathInfo)
       body = if (!method.hasBody) List()
         else readBody(in, bodyStart, environ.getOrElse("Content-Length", "0").parseInt.toOption.getOrElse(0))
-    } yield new Request(method, path, protocol, environ, query, body)
+    } yield new Request(method, path, protocol, environ, query, cookies, body)
   }
 
   private def readUntilDoubleCRLF(is: InputStream): \/[HttpError, (String, List[Byte])] = {
@@ -142,4 +144,13 @@ object Request {
 
     (decodedPath, queryMap)
   }
+
+  private def extractCookies(environ: Map[String, String]): (Map[String, String], Map[String, String]) =
+    environ.get("Cookie") match {
+      case Some(cookie) => (environ - "Cookie", cookie.split(""";\s|;""").flatMap(_.split("=") match {
+        case Array(k, v) => (k -> v).some
+        case _ => none[(String, String)]
+      }).toMap)
+      case None => (environ, Map())
+    }
 }
