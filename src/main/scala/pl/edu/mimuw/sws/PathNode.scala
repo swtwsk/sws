@@ -1,21 +1,26 @@
 package pl.edu.mimuw.sws
 
-import pl.edu.mimuw.sws.UrlResolver.{Arg, Controller}
+import pl.edu.mimuw.sws.UrlResolver.{ArgsMap, Controller, IOController}
 
 import scala.annotation.tailrec
 import scalaz._
 import Scalaz._
+import scalaz.zio.IO
 
-case class PathNode(children: List[PathNode], segment: Either[Arg, String], controller: Option[Controller])
+case class PathNode(children: List[PathNode], segment: Either[Arg, String], controller: Option[IOController])
 
 object PathNode {
-  def apply(urls: List[(String, Controller)]): PathNode = {
+  def apply(urls: List[(String, Controller)], urlsIO: List[(String, IOController)]): PathNode = {
+    def liftToIO(controller: Controller): IOController =
+      (r: Request, args: ArgsMap) => IO.syncException(controller(r, args))
+
+    def urlFoldFun(acc: PathNode, el: (String, IOController)): PathNode = addSon(acc, el._1.split("/").toList, el._2)
+
     val pathTree = urls.foldLeft(new PathNode(List(), Right(""), None)) {
-      (acc: PathNode, el: (String, Controller)) =>
-        val (path, view) = el
-        addSon(acc, path.split("/").toList, view)
+      (acc, el) => urlFoldFun(acc, el match {case (s, c) => (s, liftToIO(c))})
     }
-    moveArgToBack(pathTree)
+    val pathTreeWithIO = urlsIO.foldLeft(pathTree)(urlFoldFun)
+    moveArgToBack(pathTreeWithIO)
   }
 
   def apply(newChildren: List[PathNode], oldNode: PathNode): PathNode =
@@ -23,7 +28,7 @@ object PathNode {
 
   private val argRegexPattern = """\<(\w+)\>""".r
 
-  private def addSon(node: PathNode, path: List[String], controller: Controller): PathNode = path match {
+  private def addSon(node: PathNode, path: List[String], controller: IOController): PathNode = path match {
     case ph :: Nil => argRegexPattern.findFirstMatchIn(ph) match {
       case Some(arg) => new PathNode(List(), Left(Arg(arg.group(1))), controller.some)
       case None => new PathNode(List(), Right(ph), controller.some)

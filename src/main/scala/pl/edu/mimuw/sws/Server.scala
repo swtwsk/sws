@@ -1,9 +1,12 @@
 package pl.edu.mimuw.sws
-import pl.edu.mimuw.sws.UrlResolver.Controller
+import pl.edu.mimuw.sws.UrlResolver.{Controller, IOController}
 import scalaz.zio._
 
 
-case class Server (configFile: String, urls: List[(String, Controller)]) {
+case class Server(configFile: String,
+                  urls: List[(String, Controller)],
+                  urlsIO: List[(String, IOController)],
+                  static: Option[(String, String)]) {
   val run: IO[Nothing, Unit] = for {
 
     // create queue for logger
@@ -22,8 +25,10 @@ case class Server (configFile: String, urls: List[(String, Controller)]) {
     // open ServerSocket
     serverSocket <- Combinators.insist(WebIO.listenOn(serverData))(Log.exception(logQueue))
 
+    pathTree = PathNode(urls, urlsIO)
+    resolver = UrlResolver(static)
     // init. worker
-    worker = Worker(serverDataRef, logQueue, PathNode(urls))
+    worker = Worker(serverDataRef, logQueue, pathTree, resolver)
 
     acceptAndFork = for {
       socket <- Combinators.insist(WebIO.accept(serverSocket))(Log.exception(logQueue))
