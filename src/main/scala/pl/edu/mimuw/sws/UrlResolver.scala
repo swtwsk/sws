@@ -33,6 +33,8 @@ case class UrlResolver(static: Option[String], collector: Option[StaticCollector
         }
       }
 
+    lazy val resolved = recResolve(path.split("/").toList.tailOption.getOrElse(Nil), pathTree, Map())
+
     static match {
       case Some(staticPath) =>
         val regex = (staticPath + """.*""").r
@@ -41,12 +43,10 @@ case class UrlResolver(static: Option[String], collector: Option[StaticCollector
             case Some(c) => (c.serveStatic(_: Request)).right
             case None => Http404.left
           }
-          case None => recResolve(path.split("/").toList.tailOption.getOrElse(Nil), pathTree, Map())
+          case None => resolved
         }
-      case None => recResolve(path.split("/").toList.tailOption.getOrElse(Nil), pathTree, Map())
+      case None => resolved
     }
-
-
   }
 }
 
