@@ -68,7 +68,7 @@ object Request {
     @tailrec
     def readStringFromSocket(rest: List[Byte]): \/[HttpError, (String, List[Byte])] = {
       is.read(buffer) match {
-        case 0 => Http400.left
+        case -1 | 0 => Http400.left
         case count: Int =>
           val (str, bytes, split) = splitInput(rest, buffer.take(count).toList)
           if (split) (str.reverse.map(_.toChar).mkString, bytes).right else readStringFromSocket(str)
