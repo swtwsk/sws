@@ -9,7 +9,7 @@ case class Worker(serverData: Ref[ServerData], logQueue: Queue[Log], pathTree: P
     val base = for {
       request <- getRequest(socket)
       response <- getResponse(request)
-      _ <- WebIO.send(socket, response)
+      _ <- send(socket, response)
     } yield keepAlive(request)
 
     lazy val cont: IO[Exception, Unit] = for {
