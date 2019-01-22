@@ -7,12 +7,13 @@ import scala.annotation.tailrec
 
 object UrlResolver {
   case class Arg(name: String)
-  type Controller = (Request, Map[String, String]) => Response
+  type ArgsMap = Map[String, String]
+  type Controller = (Request, ArgsMap) => Response
   type RequestController = Request => Response
 
   def resolve(path: String, pathTree: PathNode): \/[HttpError, RequestController] = {
     @tailrec
-    def recResolve(pl: List[String], t: PathNode, args: Map[String, String]): \/[HttpError, RequestController] =
+    def recResolve(pl: List[String], t: PathNode, args: ArgsMap): \/[HttpError, RequestController] =
       pl match {
         case p :: pt => t.children find {
           _.segment match {
