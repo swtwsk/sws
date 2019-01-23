@@ -30,8 +30,7 @@ class Logger (serverDataRef: Ref[ServerData],
     case None => IO.unit
   }
 
-  val check: IO[Exception, Unit] =
-  for {
+  val check: IO[Exception, Unit] = for {
     serverData <- serverDataRef.get
     _ <- if (fn.contains(serverData.logFile))
            IO.unit
@@ -39,8 +38,7 @@ class Logger (serverDataRef: Ref[ServerData],
            fnsh *> init
   } yield ()
 
-  val log: IO[Exception, Unit] =
-  for {
+  val log: IO[Exception, Unit] = for {
     serverData <- serverDataRef.get
     log <- logQueue.take
     logs = "Log (" + log.severity + "): " + log.message

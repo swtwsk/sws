@@ -14,7 +14,8 @@ case class Server(configFile: String,
 
     // read server data from config file
     serverData <- ServerDataReader.readConfigFile(configFile)
-                                  .catchAll(e => Log.exception(logQueue)(e) *> IO.point(ServerData.default))
+                                  .catchAll(e => Log.warning(logQueue)("Using default config")
+                                              *> IO.point(ServerData.default))
 
     // debug info
     _ <- Log.debug(logQueue)("Server port: " + serverData.port)
@@ -24,16 +25,20 @@ case class Server(configFile: String,
 
     // start logger
     logger = new Logger(serverDataRef, logQueue)
-    loggerFiber <- logger.run.fork
+    _ <- logger.run.fork
+
+    // start configurer
+    configurer = Configurer(serverDataRef, logQueue, configFile)
+    _ <- configurer.run.fork
 
     _ <- Log.debug(logQueue)("Server: starting to listen")
 
     // open ServerSocket
     serverSocket <- Combinators.insist(WebIO.listenOn(serverData))(Log.exception(logQueue))
 
+    // init. worker
     pathTree = PathNode(urls, urlsIO)
     resolver = UrlResolver(static)
-    // init. worker
     worker = Worker(serverDataRef, logQueue, pathTree, resolver)
 
     acceptAndFork = for {

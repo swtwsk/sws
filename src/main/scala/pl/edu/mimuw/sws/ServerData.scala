@@ -27,7 +27,7 @@ object ServerDataReader {
         line match {
           case line if line.startsWith("port: ") => serverData.port = line.substring(6).toInt
           case line if line.startsWith("log: ") => serverData.logFile = line.substring(5)
-          case default => ()
+          case _ => ()
         }
       serverData
     })
