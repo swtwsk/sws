@@ -1,5 +1,7 @@
 package pl.edu.mimuw.testapi
 
+import java.util.{Calendar, Date}
+
 import pl.edu.mimuw.sws._
 
 case object TestMain extends ServerMain {
@@ -40,6 +42,8 @@ case object TestMain extends ServerMain {
     "<html><head><title>Set Cookie</title></head><body>" +
       "<div><b>theme</b> = <b>light</b></div>" +
       "</body></html>",
-    cookies = Map("theme" -> "light")
+    cookies = Cookie(request.query.getOrElse("key", "theme"), request.query.getOrElse("value", "light")) ::
+      Cookie("klucz", "wartosc", Some(Calendar.getInstance.getTime), maxAge = None, path = Some("/")) ::
+      Nil
   )
 }
