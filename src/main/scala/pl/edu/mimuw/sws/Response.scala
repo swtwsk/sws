@@ -25,10 +25,16 @@ sealed trait BodyResponse extends Response {
     """text\/\w*""".r
       .findFirstMatchIn(contentType).isDefined
 
-  override protected def getHeaders: List[String] =
-    ("Content-Type: " + contentType + (if (isText && !charset.isEmpty) "; charset=" + charset else "")) ::
-      ((headers + ("Content-Length" -> byteContent.length.toString)) map { h => h._1 + ": " + h._2 }).toList
+  private def contentTypeHeader: String =
+    "Content-Type: " + contentType + (if (isText && !charset.isEmpty) "; charset=" + charset else "")
 
+  override protected def getHeaders: List[String] = {
+    val headersList = ((headers + ("Content-Length" -> byteContent.length.toString)) map {
+      h => h._1 + ": " + h._2
+    }).toList
+
+    if (contentType.isEmpty) headersList else contentTypeHeader :: headersList
+  }
 
   override def response: List[Byte] = super.response ::: byteContent
 }
@@ -49,8 +55,6 @@ case class HttpResponse(content: String,
     super.getHeaders ::: (cookies map {"Set-Cookie: " + _})
 }
 
-// TODO: JsonResponse
-
 case class HttpRedirectResponse(location: String,
                                 statusCode: HttpRedirect = Http302) extends Response {
   override def headers: Map[String, String] = Map("Location" -> location)
@@ -63,7 +67,7 @@ case class HttpErrorResponse(statusCode: HttpError,
                              headers: Map[String, String] = Map()) extends StringResponse
 
 case class FileResponse(byteContent: List[Byte],
-                        contentType: String,
+                        contentType: String = "",
                         statusCode: HttpStatus = Http200,
                         charset: String = "",
                         headers: Map[String, String] = Map()) extends BodyResponse

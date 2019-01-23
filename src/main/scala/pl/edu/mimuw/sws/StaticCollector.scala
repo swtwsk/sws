@@ -41,14 +41,12 @@ case class StaticCollector(staticPaths: Option[(String, String)], favicon: Optio
     "ico" -> "image/x-icon",
   )
 
-  private val unknownExtension: String = "application/octet-stream"
-
   private def generateResponse(file: Array[Byte], relativePath: String): Response = {
     val fileExtensionDotPos = relativePath.lastIndexOf('.')
     val fileExtension = if (fileExtensionDotPos > 0) relativePath.substring(fileExtensionDotPos + 1).some else none
     val contentType = fileExtension match {
-      case Some(fe) => extensionMap.getOrElse(fe, unknownExtension)
-      case None => unknownExtension
+      case Some(fe) => extensionMap.getOrElse(fe, "")
+      case None => ""
     }
     FileResponse(file.toList, contentType = contentType)
   }
