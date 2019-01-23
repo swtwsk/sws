@@ -23,7 +23,8 @@ case class Server(configFile: String,
     serverDataRef <- Ref(serverData)
 
     // start logger
-    loggerFiber <- Logger(serverDataRef, logQueue, Severity.Debug).log.forever.fork
+    logger = new Logger(serverDataRef, logQueue)
+    loggerFiber <- logger.run.fork
 
     _ <- Log.debug(logQueue)("Server: starting to listen")
 
