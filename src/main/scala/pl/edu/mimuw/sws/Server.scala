@@ -6,7 +6,8 @@ import scalaz.zio._
 case class Server(configFile: String,
                   urls: List[(String, Controller)],
                   urlsIO: List[(String, IOController)],
-                  static: Option[(String, String)]) {
+                  static: Option[(String, String)],
+                  favicon: Option[String]) {
   val run: IO[Nothing, Unit] = for {
 
     // create queue for logger
@@ -38,7 +39,7 @@ case class Server(configFile: String,
 
     // init. worker
     pathTree = PathNode(urls, urlsIO)
-    resolver = UrlResolver(static)
+    resolver = UrlResolver(static, favicon)
     worker = Worker(serverDataRef, logQueue, pathTree, resolver)
 
     acceptAndFork = for {

@@ -6,16 +6,24 @@ import scalaz._
 import Scalaz._
 import scalaz.zio.IO
 
-case class StaticCollector(staticPathPrefix: String, folderPath: String) {
+case class StaticCollector(staticPaths: Option[(String, String)], favicon: Option[String]) {
   import scala.language.reflectiveCalls
 
-  def serveStatic(request: Request): IO[Exception, Response] = serveStatic(request.path)
+  def serveStatic: Option[(String, Request => IO[Exception, Response])] = staticPaths map {
+    case (staticPathPrefix: String, folderPath: String) => (
+      staticPathPrefix,
+      (request: Request) => serveStatic(folderPath + request.path.replaceFirst("^" + staticPathPrefix, ""))
+    )
+  }
 
-  private def serveStatic(relativePath: String): IO[Exception, Response] = IO.syncException({
-    val trimmedRelativePath = relativePath.replaceFirst("^" + staticPathPrefix, "")
-    val path = Paths.get(folderPath + trimmedRelativePath)
+  val serveFavicon: Option[Request => IO[Exception, Response]] = favicon map {
+    s: String => (_: Request) => serveStatic(s)
+  }
 
-    if (Files.exists(path) && !Files.isDirectory(path)) generateResponse(Files.readAllBytes(path), trimmedRelativePath)
+  private def serveStatic(filePath: String): IO[Exception, Response] = IO.syncException({
+    val path = Paths.get(filePath)
+
+    if (Files.exists(path) && !Files.isDirectory(path)) generateResponse(Files.readAllBytes(path), filePath)
     else HttpErrorResponse(Http404, content = Http404.toString)
   })
 
@@ -30,6 +38,7 @@ case class StaticCollector(staticPathPrefix: String, folderPath: String) {
     "jpg" -> "image/jpeg",
     "jpeg" -> "image/jpeg",
     "gif" -> "image/gif",
+    "ico" -> "image/x-icon",
   )
 
   private val unknownExtension: String = "application/octet-stream"
@@ -46,6 +55,9 @@ case class StaticCollector(staticPathPrefix: String, folderPath: String) {
 }
 
 object StaticCollector {
-  def apply(staticPathPrefix: String, folderPath: String): StaticCollector =
-    new StaticCollector(staticPathPrefix: String, folderPath + (if (folderPath.last != '/') "/" else ""))
+  def apply(paths: Option[(String, String)], favicon: Option[String]): StaticCollector =
+    new StaticCollector(paths.map {
+      case (staticPathPrefix: String, folderPath: String) =>
+        (staticPathPrefix, folderPath + (if (folderPath.last != '/') "/" else ""))
+    }, favicon)
 }

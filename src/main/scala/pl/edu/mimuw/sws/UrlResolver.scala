@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 
 case class Arg(name: String)
 
-case class UrlResolver(static: Option[String], collector: Option[StaticCollector]) {
+case class UrlResolver(collector: StaticCollector) {
   import UrlResolver.{ArgsMap, RequestController}
 
   def resolve(path: String, pathTree: PathNode): \/[HttpError, RequestController] = {
@@ -33,19 +33,29 @@ case class UrlResolver(static: Option[String], collector: Option[StaticCollector
         }
       }
 
-    lazy val resolved = recResolve(path.split("/").toList.tailOption.getOrElse(Nil), pathTree, Map())
-
-    static match {
-      case Some(staticPath) =>
-        val regex = ("""^""" + staticPath + """.*""").r
+    val serveStatic = collector.serveStatic flatMap {
+      case (staticPathPrefix, serveFunction) =>
+        val regex = ("""^""" + staticPathPrefix + """.*""").r
         regex.findFirstMatchIn(path) match {
-          case Some(_) => collector match {
-            case Some(c) => (c.serveStatic(_: Request)).right
-            case None => Http404.left
-          }
-          case None => resolved
+          case Some(_) => serveFunction.some
+          case None => none
         }
-      case None => resolved
+    }
+    val serveFavicon = collector.serveFavicon flatMap {
+      serveFunction =>
+        val regex = """^\/favicon\.ico$""".r
+        regex.findFirstMatchIn(path) match {
+          case Some(_) => serveFunction.some
+          case None => none
+        }
+    }
+
+    serveStatic match {
+      case Some(serveFunction) => serveFunction.right
+      case None => serveFavicon match {
+        case Some(serveFunction) => serveFunction.right
+        case None => recResolve(path.split("/").toList.tailOption.getOrElse(Nil), pathTree, Map())
+      }
     }
   }
 }
@@ -56,8 +66,6 @@ object UrlResolver {
   type IOController = (Request, ArgsMap) => IO[Exception, Response]
   type RequestController = Request => IO[Exception, Response]
 
-  def apply(static: Option[(String, String)]): UrlResolver = static match {
-    case Some((staticPath, staticFolder)) => new UrlResolver(staticPath.some, StaticCollector(staticPath, staticFolder).some)
-    case None => new UrlResolver(none, none)
-  }
+  def apply(static: Option[(String, String)], favicon: Option[String]): UrlResolver =
+    new UrlResolver(StaticCollector(static, favicon))
 }

@@ -10,10 +10,11 @@ abstract class ServerMain {
   val urlsIO: List[(String, IOController)] = List()
 
   val static: Option[(String, String)] = None
+  val favicon: Option[String] = None
 
   final def main(args: Array[String]): Unit = {
     val configFile = if (args.length > 0) args(0) else "default.conf"
-    val server = Server(configFile, urls, urlsIO, static)
+    val server = Server(configFile, urls, urlsIO, static, favicon)
     rts.unsafeRunSync(server.run)
   }
 }
