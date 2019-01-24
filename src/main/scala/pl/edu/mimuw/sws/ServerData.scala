@@ -12,8 +12,8 @@ case class ServerData(var port: Int,
 object ServerData {
   val default = ServerData(9999,
                            "/home/vivanilla/default.log.txt",
-                            Severity.Debug,
-                            Severity.Informational)
+                            Severity.Informational,
+                            Severity.Debug)
 }
 
 object ServerDataReader {

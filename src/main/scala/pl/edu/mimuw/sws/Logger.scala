@@ -21,7 +21,7 @@ class Logger (serverDataRef: Ref[ServerData],
       case Some(n) => FileIO.getPrintWriter(n).flatMap(setPw)
       case None => IO.unit
     }
-    _ <- putStrLn("Logger: init done")
+    _ <- Log.debug(logQueue)("Logger: opened new log file")
   } yield ()
 
   val fnsh: IO[Nothing, Unit] =
