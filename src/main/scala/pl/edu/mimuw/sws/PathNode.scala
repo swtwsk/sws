@@ -30,8 +30,8 @@ object PathNode {
 
   private def addSon(node: PathNode, path: List[String], controller: IOController): PathNode = path match {
     case ph :: Nil => argRegexPattern.findFirstMatchIn(ph) match {
-      case Some(arg) => new PathNode(List(), Left(Arg(arg.group(1))), controller.some)
-      case None => new PathNode(List(), Right(ph), controller.some)
+      case Some(arg) => new PathNode(node.children, Left(Arg(arg.group(1))), controller.some)
+      case None => new PathNode(node.children, Right(ph), controller.some)
     }
     case _ :: ph :: pt => node.children find {
       _.segment match {
