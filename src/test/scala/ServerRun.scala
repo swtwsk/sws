@@ -15,17 +15,20 @@ class ServerRun extends FlatSpec {
                                      TestMain.static,
                                      TestMain.favicon)
   "The server" should "run" in {
-        val testing: IO[Unit, Any] = for {
+        val testing: IO[Unit, Boolean] = for {
           _ <- putStrLn("Some testing...")
-        } yield ()
+          success <- IO.succeedLazy(true)
+        } yield success
 
-        rts.unsafeRun(for {
+        val success = rts.unsafeRun(
+          for {
             serverFiber <- server.run.fork
             _ <- IO.sleep(100 microseconds) // wait for server to start
-            _ <- testing                               // run testing
+            success <- testing                         // run testing
             _ <- serverFiber.interrupt                 // interrupt server fiber
-        } yield ())
+          } yield success
+        )
 
-        assert(true)
+        assert(success)
   }
 }
