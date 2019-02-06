@@ -7,11 +7,11 @@ case class Configurer (serverDataRef: Ref[ServerData], logQueue: Queue[Log], con
   val getServerData: IO[Nothing, ServerData] =
     ServerDataReader.readConfigFile(configFile)
       .catchAll(e => Log.warning(logQueue)("Using default config")
-                  *> IO.point(ServerData.default))
+                  *> IO.succeedLazy(ServerData.default))
 
   val refresh: IO[Nothing, Unit] = for {
     serverData <- getServerData
-    _ <- serverDataRef.setLater(serverData)
+    _ <- serverDataRef.setAsync(serverData)
   } yield ()
 
   val run: IO[Nothing, Unit] =

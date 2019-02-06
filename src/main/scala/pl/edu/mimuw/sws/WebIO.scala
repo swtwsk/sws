@@ -8,7 +8,7 @@ import scalaz.\/
 // abandon all hope ye who enter here for beyond lies only non-monadic IO
 object WebIO {
   def listenOn(sd: ServerData): IO[Exception, ServerSocket] = IO.syncException(new ServerSocket(sd.port))
-  def accept(socket: ServerSocket): IO[Exception, Socket] = IO.syncException(socket.accept())
+  def accept(socket: ServerSocket): IO[Exception, Socket] = IO.blocking(socket.accept())
   def getRequest(socket: Socket): IO[Exception, \/[HttpError, Request]] = IO.syncException(Request(socket))
   def send(socket: Socket, response: Response): IO[Exception, Unit] = IO.syncException({
       val out = new PrintStream(socket.getOutputStream)

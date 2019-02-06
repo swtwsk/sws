@@ -16,7 +16,7 @@ case class Server(configFile: String,
     // read server data from config file
     serverData <- ServerDataReader.readConfigFile(configFile)
                                   .catchAll(e => Log.warning(logQueue)("Using default config")
-                                              *> IO.point(ServerData.default))
+                                              *> IO.succeedLazy(ServerData.default))
 
     // debug info
     _ <- Log.debug(logQueue)("Server port: " + serverData.port)

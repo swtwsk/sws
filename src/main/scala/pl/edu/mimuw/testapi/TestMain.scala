@@ -8,6 +8,7 @@ import scalaz.zio.IO
 import pl.edu.mimuw.sws._
 
 case object TestMain extends ServerMain {
+  override val defaultConfigFile: String = "default.conf"
   val urls = List(
     ("/test1", cssView),
     ("/test4", getView),
