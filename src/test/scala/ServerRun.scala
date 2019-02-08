@@ -12,7 +12,7 @@ import scala.language.postfixOps
 
 class ServerRun extends FlatSpec {
   private final val rts: RTS = new RTS{}
-  private final val server = Server(TestMain.defaultConfigFile,
+  private final val server = Server("testing/test.conf",
                                      TestMain.urls,
                                      TestMain.urlsIO,
                                      TestMain.static,
@@ -22,7 +22,9 @@ class ServerRun extends FlatSpec {
         rts.unsafeRun(
           for {
             serverFiber <- server.run.fork
-            _ <- IO.sleep(100 microseconds) // wait for server to start
+            _ <- putStrLn("readyy for nap time")
+            _ <- IO.sleep(10 seconds) // wait for server to start
+            _ <- putStrLn("done")
             success <- tester                          // run testing
             _ <- serverFiber.interrupt                 // interrupt server fiber
           } yield success
@@ -38,12 +40,12 @@ class ServerRun extends FlatSpec {
   }
 
   it should "receive clients" in {
-    val tester: IO[Unit, Boolean] = for {
-      socket <- WebIO.connectTo("localhost", 9999).map(Some(_))
-                     .catchAll(_ => IO.succeedLazy(Option.empty[Socket]))
-      success = socket.nonEmpty
-    } yield success
+        val tester: IO[Unit, Boolean] = for {
+          socket <- WebIO.connectTo("localhost", 9999).map(Some(_))
+                         .catchAll(_ => IO.succeedLazy(Option.empty[Socket]))
+          success = socket.nonEmpty
+        } yield success
 
-    assert(testServer(tester))
+        assert(testServer(tester))
   }
 }
