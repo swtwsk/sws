@@ -7,6 +7,7 @@
 .idea
 project/
 private/
+testing/test.log
 
 # Scala worksheets
 *.sc
