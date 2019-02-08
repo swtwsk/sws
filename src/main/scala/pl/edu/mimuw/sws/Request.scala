@@ -6,7 +6,6 @@ import scala.collection.immutable.Map
 import scalaz._
 import Scalaz._
 
-// TODO: Maybe we should pack query into special Query class?
 case class Request private(method: HttpMethod,
                            path: String,
                            protocol: HttpProtocol,

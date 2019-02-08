@@ -1,9 +1,10 @@
 package pl.edu.mimuw.sws
 import scalaz.zio._
-import java.io.{BufferedReader, InputStreamReader, PrintStream}
+import java.io.{BufferedReader, InputStream, InputStreamReader, PrintStream}
 import java.net.{ServerSocket, Socket}
 
 import scalaz.\/
+
 import scala.annotation.tailrec
 
 // abandon all hope ye who enter here for beyond lies only non-monadic IO
@@ -38,6 +39,8 @@ object WebIO {
       val instrm = socket.getInputStream
       (instrm.read(buffer), buffer)
     })
+  def getInputStream(socket: Socket): IO[Exception, InputStream] =
+    IO.syncException(socket.getInputStream)
   def getLines(socket: Socket): IO[Exception, List[String]] =
     IO.syncException({
       @tailrec
