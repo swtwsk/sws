@@ -76,7 +76,6 @@ object Request {
       }
     }
 
-    // TODO: Handle parsing errors and timeouts!
     readStringFromSocket(Nil)
   }
 
