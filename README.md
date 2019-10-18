@@ -30,7 +30,7 @@ favicon: Option[String]
 defaultConfigFile: String
 ```
 
-The first two are used for routing URIs to proper `Controller` (defined as function typed `(Request, ArgsMap) => Response`, where `ArgsMap` is in just a typename for `Map[String, String]`). In addition, `urlsIO` lets you control your `IO` monad yourself.
+The first two are used for routing URIs to proper `Controller` (defined as function typed `(Request, ArgsMap) => Response`, where `ArgsMap` is just a typename for `Map[String, String]`). In addition, `urlsIO` lets you control your `IO` monad yourself.
 
 `static` maps URI to folder with static files on the disk and `favicon` maps to file returned by SWS when asked for a `favicon.ico`. `defaultConfigFile` is used when no configuration file is given as command line argument (if there's no default configuration file either, it uses port 9999).
 
